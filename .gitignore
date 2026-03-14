@@ -1,0 +1,6 @@
+bin/
+captures/
+*.log
+*.tmp
+*.out
+vendor/
