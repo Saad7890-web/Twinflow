@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 
+	"github.com/Saad7890-web/twinflow/internal/proxy"
 	"github.com/spf13/cobra"
 )
 
@@ -13,10 +14,14 @@ var recordCmd = &cobra.Command{
 	Use:   "record",
 	Short: "Record HTTP traffic",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Record mode started")
-		fmt.Println("Listening on:", listenAddr)
-		fmt.Println("Forwarding to:", targetAddr)
-	},
+
+	fmt.Println("Starting TwinFlow recorder")
+
+	err := proxy.Start(listenAddr, targetAddr)
+	if err != nil {
+		fmt.Println("Error:", err)
+	}
+},
 }
 
 func init() {
