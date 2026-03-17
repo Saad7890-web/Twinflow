@@ -11,4 +11,8 @@ type TrafficRecord struct {
 	ResponseBody   string `json:"response_body"`
 
 	LatencyMs int64 `json:"latency_ms"`
+
+	ReplayStatus   int    `json:"replay_status"`
+	ReplayBody     string `json:"replay_body"`
+	ReplayLatency  int64  `json:"replay_latency_ms"`
 }
