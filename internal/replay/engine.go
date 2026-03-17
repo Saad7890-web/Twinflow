@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Saad7890-web/twinflow/internal/diff"
+	"github.com/Saad7890-web/twinflow/internal/report"
 	"github.com/Saad7890-web/twinflow/pkg/models"
 )
 
@@ -38,6 +39,9 @@ func (e *Engine) Replay(captureFile string) error {
 
 	scanner := bufio.NewScanner(file)
 
+	// ✅ Initialize summary
+	summary := &report.Summary{}
+
 	for scanner.Scan() {
 
 		line := scanner.Bytes()
@@ -50,17 +54,24 @@ func (e *Engine) Replay(captureFile string) error {
 			continue
 		}
 
-		err = e.replayRequest(record)
+		// replay and get result
+		result, hasLatencyIssue, err := e.replayRequest(record)
 		if err != nil {
 			fmt.Println("Replay error:", err)
+			continue
 		}
+
+		// ✅ Update summary
+		summary.AddResult(result.Breaking, hasLatencyIssue)
 	}
+
+	// ✅ Print final summary
+	summary.Print()
 
 	return nil
 }
 
-
-func (e *Engine) replayRequest(record models.TrafficRecord) error {
+func (e *Engine) replayRequest(record models.TrafficRecord) (diff.Result, bool, error) {
 
 	url := e.target + record.Path
 
@@ -69,9 +80,8 @@ func (e *Engine) replayRequest(record models.TrafficRecord) error {
 		url,
 		bytes.NewBuffer([]byte(record.RequestBody)),
 	)
-
 	if err != nil {
-		return err
+		return diff.Result{}, false, err
 	}
 
 	for k, v := range record.Headers {
@@ -82,10 +92,9 @@ func (e *Engine) replayRequest(record models.TrafficRecord) error {
 
 	resp, err := e.client.Do(req)
 	if err != nil {
-		return err
+		return diff.Result{}, false, err
 	}
-
-	
+	defer resp.Body.Close() 
 
 	duration := time.Since(start)
 
@@ -95,9 +104,13 @@ func (e *Engine) replayRequest(record models.TrafficRecord) error {
 	record.ReplayBody = string(bodyBytes)
 	record.ReplayLatency = duration.Milliseconds()
 
-
+	
 	result := diff.Compare(record)
 
+	
+	hasLatencyIssue := record.ReplayLatency > record.LatencyMs*2
+
+	
 	fmt.Println("-----")
 	fmt.Println("REQUEST:", record.Method, record.Path)
 
@@ -106,13 +119,13 @@ func (e *Engine) replayRequest(record models.TrafficRecord) error {
 	} else {
 		fmt.Println("OK")
 	}
+
 	for _, msg := range result.Messages {
 		fmt.Println("-", msg)
 	}
 
-	fmt.Println("Replayed:", record.Method, record.Path)
 	fmt.Println("Status:", resp.StatusCode)
 	fmt.Println("Latency:", duration)
 
-	return nil
+	return result, hasLatencyIssue, nil
 }
