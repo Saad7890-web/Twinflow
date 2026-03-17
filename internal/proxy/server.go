@@ -3,11 +3,18 @@ package proxy
 import (
 	"log"
 	"net/http"
+
+	"github.com/Saad7890-web/twinflow/internal/storage"
 )
 
 func Start(listenAddr string, target string) error {
 
-	proxy, err := NewProxy(target)
+	store, err := storage.NewFileStore("captures/traffic.log")
+	if err != nil {
+		return err
+	}
+
+	proxy, err := NewProxy(target, store)
 	if err != nil {
 		return err
 	}
