@@ -5,10 +5,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"time"
 
+	"github.com/Saad7890-web/twinflow/internal/diff"
 	"github.com/Saad7890-web/twinflow/pkg/models"
 )
 
@@ -83,7 +85,30 @@ func (e *Engine) replayRequest(record models.TrafficRecord) error {
 		return err
 	}
 
+	
+
 	duration := time.Since(start)
+
+	bodyBytes, _ := io.ReadAll(resp.Body)
+
+	record.ReplayStatus = resp.StatusCode
+	record.ReplayBody = string(bodyBytes)
+	record.ReplayLatency = duration.Milliseconds()
+
+
+	result := diff.Compare(record)
+
+	fmt.Println("-----")
+	fmt.Println("REQUEST:", record.Method, record.Path)
+
+	if result.Breaking {
+		fmt.Println("BREAKING CHANGE")
+	} else {
+		fmt.Println("OK")
+	}
+	for _, msg := range result.Messages {
+		fmt.Println("-", msg)
+	}
 
 	fmt.Println("Replayed:", record.Method, record.Path)
 	fmt.Println("Status:", resp.StatusCode)
