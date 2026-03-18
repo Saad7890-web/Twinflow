@@ -39,7 +39,7 @@ func (e *Engine) Replay(captureFile string) error {
 
 	scanner := bufio.NewScanner(file)
 
-	// ✅ Initialize summary
+	
 	summary := &report.Summary{}
 
 	for scanner.Scan() {
@@ -54,18 +54,17 @@ func (e *Engine) Replay(captureFile string) error {
 			continue
 		}
 
-		// replay and get result
+		
 		result, hasLatencyIssue, err := e.replayRequest(record)
 		if err != nil {
 			fmt.Println("Replay error:", err)
 			continue
 		}
 
-		// ✅ Update summary
 		summary.AddResult(result.Breaking, hasLatencyIssue)
 	}
 
-	// ✅ Print final summary
+	
 	summary.Print()
 
 	return nil

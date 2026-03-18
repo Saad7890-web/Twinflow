@@ -25,7 +25,7 @@ Run: func(cmd *cobra.Command, args []string) {
 }
 
 func init() {
-	replayCmd.Flags().StringVar(&captureDir, "capture", "captures/traffic.log", "capture file")
+	replayCmd.Flags().StringVar(&captureDir, "capture", "/captures/traffic.log", "capture file")
 	replayCmd.Flags().StringVar(&replayTarget, "target", "", "target service URL")
 
 	replayCmd.MarkFlagRequired("target")
