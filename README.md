@@ -1,124 +1,199 @@
-# TwinFlow
+<div align="center">
 
-> HTTP traffic capture and replay for detecting breaking changes between service versions.
+<br/>
+
+```
+████████╗██╗    ██╗██╗███╗   ██╗███████╗██╗      ██████╗ ██╗    ██╗
+╚══██╔══╝██║    ██║██║████╗  ██║██╔════╝██║     ██╔═══██╗██║    ██║
+   ██║   ██║ █╗ ██║██║██╔██╗ ██║█████╗  ██║     ██║   ██║██║ █╗ ██║
+   ██║   ██║███╗██║██║██║╚██╗██║██╔══╝  ██║     ██║   ██║██║███╗██║
+   ██║   ╚███╔███╔╝██║██║ ╚████║██║     ███████╗╚██████╔╝╚███╔███╔╝
+   ╚═╝    ╚══╝╚══╝ ╚═╝╚═╝  ╚═══╝╚═╝     ╚══════╝ ╚═════╝  ╚══╝╚══╝
+```
+
+**Traffic replay and API breaking-change detection — before it reaches production.**
+
+[![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat-square&logo=go)](https://golang.org)
+[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker)](https://docker.com)
+[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey?style=flat-square)]()
+
+</div>
 
 ---
 
-## Overview
+## What is TwinFlow?
 
-TwinFlow lets you record live HTTP traffic from a running service and replay it against a new version — surfacing response diffs before a deployment goes wrong. It's built for teams that want a safety net during refactors, dependency upgrades, or API migrations.
+TwinFlow records **real production traffic** and replays it against a new version of your service — catching breaking API changes, missing fields, and latency regressions **before** you deploy.
+
+Think of it as a shadow test harness that uses your own live traffic as the test suite.
+
+```
+Production Traffic          New Service Version
+      │                             │
+      ▼                             ▼
+  [ Record ]  ──── replay ────► [ Compare ]
+      │                             │
+  captures/                   ❌ BREAKING CHANGE
+  traffic.log                  - Field removed: name
+                               - Field added: username
+                               STATUS: UNSAFE TO DEPLOY
+```
 
 ---
 
 ## Features
 
-- **HTTP Traffic Capture** — Transparently proxy and record requests/responses from any HTTP service
-- **Request Replay** — Replay captured traffic against a new service version with accurate timing and headers
-- **Response Diff Detection** — Automatically compare old vs. new responses and highlight deviations
-- **CLI Interface** — Simple, scriptable commands with no UI overhead
-- **Docker Support** — Run in any containerized environment with zero host dependencies
+| Feature                             | Description                                              |
+| ----------------------------------- | -------------------------------------------------------- |
+| 🎙️ **Traffic Recording**            | Capture real HTTP requests and responses from production |
+| ▶️ **Traffic Replay**               | Replay captured traffic against any target service       |
+| 🔍 **Breaking Change Detection**    | Detect added/removed/modified fields in API responses    |
+| ⏱️ **Latency Regression Detection** | Flag performance degradations between versions           |
+| 🖥️ **CLI-First Workflow**           | Simple, composable commands that fit any pipeline        |
+| 🐳 **Docker Support**               | Zero-dependency deployment via Docker                    |
+| 🌍 **Cross-Platform Builds**        | Pre-built binaries for Linux, macOS, and Windows         |
 
 ---
 
 ## Installation
 
-```bash
-# Using Go
-go install github.com/your-org/twinflow@latest
+### Option 1 — Build from Source
 
-# Using Docker
-docker pull your-org/twinflow:latest
+> Requires Go 1.21+
+
+```bash
+git clone https://github.com/Saad7890-web/Twinflow.git
+cd twinflow
+go build -o twinflow ./cmd/twinflow
+```
+
+### Option 2 — Cross-Platform Binaries
+
+Build for all major platforms in one step:
+
+```bash
+# Linux
+GOOS=linux GOARCH=amd64 go build -o dist/twinflow-linux ./cmd/twinflow
+
+# macOS
+GOOS=darwin GOARCH=amd64 go build -o dist/twinflow-mac ./cmd/twinflow
+
+# Windows
+GOOS=windows GOARCH=amd64 go build -o dist/twinflow.exe ./cmd/twinflow
+```
+
+### Option 3 — Docker
+
+```bash
+docker build -t twinflow .
 ```
 
 ---
 
 ## Quick Start
 
-### 1. Record traffic
+### Step 1 — Record Production Traffic
 
-Start TwinFlow as a proxy in front of your existing service. All traffic passing through will be captured to disk.
-
-```bash
-twinflow record --listen :8080 --target http://service:9000
-```
-
-| Flag       | Description                                              |
-| ---------- | -------------------------------------------------------- |
-| `--listen` | Address TwinFlow listens on                              |
-| `--target` | Upstream service to proxy requests to                    |
-| `--output` | Directory to write capture files (default: `./captures`) |
-
-### 2. Replay against a new version
-
-Point TwinFlow at the capture directory and a new service target. It will replay every recorded request and report any response differences.
+Point TwinFlow at your running service to start capturing requests:
 
 ```bash
-twinflow replay --capture ./captures --target http://new-service:9000
+# Without Docker
+./twinflow record --target http://localhost:9000
+
+# With Docker
+docker run --network=host -v $(pwd)/captures:/captures \
+  twinflow record --target http://localhost:9000
 ```
 
-| Flag        | Description                                                |
-| ----------- | ---------------------------------------------------------- |
-| `--capture` | Directory containing recorded traffic                      |
-| `--target`  | New service version to replay against                      |
-| `--report`  | Output format: `text`, `json`, or `html` (default: `text`) |
+Captured traffic is saved to the `captures/` directory.
+
+### Step 2 — Deploy Your New Service Version
+
+Bring up your candidate service (the version you want to test) on a different port — for example, `localhost:9001`.
+
+### Step 3 — Replay and Compare
+
+```bash
+# Without Docker
+./twinflow replay --target http://localhost:9001
+
+# With Docker
+docker run --network=host -v $(pwd)/captures:/captures \
+  twinflow replay --target http://localhost:9001
+```
+
+TwinFlow replays every recorded request against the new service and compares the responses.
 
 ---
 
-## How It Works
+## Example Output
 
-```
-                   ┌─────────────────────────────────────┐
-  Incoming         │             TwinFlow                 │
-  Requests  ──────▶│  (proxy + capture / replay + diff)  │──────▶  Service
-                   └─────────────────────────────────────┘
-```
+```bash
+$ curl http://localhost:8080/user
 
-1. **Record mode** — TwinFlow acts as a transparent reverse proxy, forwarding requests to the target service and saving each request/response pair to a capture file.
-2. **Replay mode** — TwinFlow reads the capture files, sends each request to the new service, and compares the responses against the originals.
-3. **Diff detection** — Differences in status codes, headers, or response bodies are reported, helping you catch breaking changes before they reach production.
+Replaying 42 captured requests against http://localhost:9001...
+
+[1/42] GET /health .............. ✅ OK (12ms)
+[2/42] GET /user ................. ❌ BREAKING CHANGE
+       - Field removed: name
+       - Field added: username
+[3/42] POST /orders .............. ✅ OK (34ms → 41ms, +20%)
+...
+
+────────────────────────────────────────────
+SUMMARY
+────────────────────────────────────────────
+Total Requests   : 42
+Passed           : 40
+Breaking Changes : 1  ← GET /user
+Latency Warnings : 1  ← POST /orders (+20%)
+
+STATUS: ⛔ UNSAFE TO DEPLOY
+────────────────────────────────────────────
+```
 
 ---
 
-## Docker
+## Use Cases
 
-```bash
-# Record mode
-docker run --rm -v $(pwd)/captures:/captures \
-  your-org/twinflow record \
-  --listen :8080 \
-  --target http://service:9000 \
-  --output /captures
-
-# Replay mode
-docker run --rm -v $(pwd)/captures:/captures \
-  your-org/twinflow replay \
-  --capture /captures \
-  --target http://new-service:9000
-```
+- **Safe Deployment** — Validate a new service version against real-world traffic before going live
+- **API Contract Validation** — Ensure your API response shape never silently drifts between versions
+- **Regression Detection** — Catch performance regressions using actual production request volumes
+- **Microservice Testing** — Verify downstream service compatibility without writing manual test cases
 
 ---
 
 ## Roadmap
 
-- [ ] gRPC support
-- [ ] Request filtering and sampling
-- [ ] Noise reduction (ignore known-volatile fields like timestamps)
-- [ ] Web UI for diff visualization
 - [ ] CI/CD integration (GitHub Actions, GitLab CI)
+- [ ] Kubernetes support
+- [ ] HTML/JSON diff reports
+- [ ] Request filtering and sampling
+- [ ] gRPC support
 
 ---
 
 ## Contributing
 
-Contributions are welcome. Please open an issue before submitting a pull request for significant changes.
+Contributions are welcome! Please open an issue to discuss what you'd like to change, or submit a pull request directly.
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feat/my-feature`)
-3. Commit your changes (`git commit -m 'feat: add my feature'`)
-4. Push and open a pull request
+2. Create your feature branch: `git checkout -b feature/my-feature`
+3. Commit your changes: `git commit -m 'Add my feature'`
+4. Push to the branch: `git push origin feature/my-feature`
+5. Open a pull request
 
 ---
 
-## License
+## Author
 
-[MIT](LICENSE)
+Built by **Saad Islam Omy**
+
+---
+
+<div align="center">
+
+If TwinFlow saves you from a bad deploy, consider giving it a ⭐
+
+</div>
